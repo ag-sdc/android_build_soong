@@ -65,7 +65,7 @@ func NewSourceFinder(ctx Context, config Config) (f *finder.Finder) {
 		WorkingDirectory: dir,
 		RootDirs:         androidBpSearchDirs(config),
 		FollowSymlinks:   config.environ.IsEnvTrue("ALLOW_BP_UNDER_SYMLINKS"),
-		ExcludeDirs:      []string{".git", ".repo"},
+		ExcludeDirs:      []string{".git", ".repo", "tests", "test", "testing", "javatests", "javatest", "robotests", "bivalenttest", "coretest", "services-test", "minimum-test", "unit_tests", "gtest", "cts", "vts", "vts-core", "testapps"},
 		PruneFiles:       pruneFiles,
 		IncludeFiles: []string{
 			// Kati build definitions.
@@ -118,6 +118,40 @@ func findProductAndBoardConfigFiles(entries finder.DirEntries) (dirNames []strin
 	return entries.DirNames, matches
 }
 
+func isTestPath(path string) bool {
+	cleanPath := filepath.Clean(path)
+	parts := strings.Split(cleanPath, string(filepath.Separator))
+	for i, part := range parts {
+		if part == "tests_stubs" {
+			continue
+		}
+		if i < len(parts)-1 {
+			low := strings.ToLower(part)
+			switch low {
+			case "test", "tests", "testing", "javatest", "javatests", "robotests",
+				"bivalenttest", "coretest", "services-test", "minimum-test",
+				"unit_tests", "gtest", "cts", "vts", "vts-core", "testapps",
+				"testprojecttest", "testsensors":
+				return true
+			}
+			if strings.HasPrefix(low, "test_") || strings.HasSuffix(low, "_tests") || strings.HasSuffix(low, "_test") || strings.HasSuffix(low, "-tests") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func filterOutTests(list []string) []string {
+	var filtered []string
+	for _, p := range list {
+		if !isTestPath(p) {
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered
+}
+
 // FindSources searches for source files known to <f> and writes them to the filesystem for
 // use later.
 func FindSources(ctx Context, config Config, f *finder.Finder) {
@@ -128,6 +162,7 @@ func FindSources(ctx Context, config Config, f *finder.Finder) {
 
 	// Stop searching a subdirectory recursively after finding an Android.mk.
 	androidMks := f.FindFirstNamedAt(".", "Android.mk")
+	androidMks = filterOutTests(androidMks)
 	blockAndroidMks(ctx, androidMks)
 	err := dumpListToFile(ctx, config, androidMks, filepath.Join(dumpDir, "Android.mk.list"))
 	if err != nil {
@@ -184,6 +219,7 @@ func FindSources(ctx Context, config Config, f *finder.Finder) {
 
 	// Recursively look for all Android.bp files
 	androidBps := f.FindNamedAt(".", "Android.bp")
+	androidBps = filterOutTests(androidBps)
 	if len(androidBps) == 0 {
 		ctx.Fatalf("No Android.bp found")
 	}
