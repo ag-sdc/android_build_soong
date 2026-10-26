@@ -120,7 +120,8 @@ func findProductAndBoardConfigFiles(entries finder.DirEntries) (dirNames []strin
 
 func isTestPath(path string) bool {
 	cleanPath := filepath.Clean(path)
-	if strings.HasPrefix(cleanPath, "build/") || strings.HasPrefix(cleanPath, "tests_stubs/") {
+	if strings.HasPrefix(cleanPath, "build/") || strings.HasPrefix(cleanPath, "tests_stubs/") ||
+		strings.HasPrefix(cleanPath, "prebuilts/misc/") || strings.HasPrefix(cleanPath, "prebuilts/sdk/") {
 		return false
 	}
 	parts := strings.Split(cleanPath, string(filepath.Separator))
@@ -129,12 +130,19 @@ func isTestPath(path string) bool {
 			low := strings.ToLower(part)
 			switch low {
 			case "test", "tests", "testing", "javatest", "javatests", "robotests",
-				"bivalenttest", "coretest", "services-test", "minimum-test",
+				"bivalenttest", "multivalenttests", "coretest", "services-test", "minimum-test",
 				"unit_tests", "gtest", "cts", "vts", "vts-core", "testapps",
-				"testprojecttest", "testsensors":
+				"testprojecttest", "testsensors", "testutils", "testlibs", "targetprep",
+				"benchmark", "benchmarks", "perftests", "perftest", "screenshot", "screenshots",
+				"fuzz", "fuzzer", "fuzzers", "fuzztest", "fuzztests", "fuzzing":
 				return true
 			}
-			if strings.HasPrefix(low, "test_") || strings.HasSuffix(low, "_tests") || strings.HasSuffix(low, "_test") || strings.HasSuffix(low, "-tests") {
+			if strings.HasPrefix(low, "test_") || strings.HasSuffix(low, "_tests") || strings.HasSuffix(low, "_test") ||
+				strings.HasSuffix(low, "-tests") || strings.HasSuffix(low, "-test") ||
+				strings.HasSuffix(low, "_testing") || strings.HasSuffix(low, "-testing") ||
+				strings.Contains(low, "-test-") || strings.Contains(low, "-testing-") ||
+				strings.HasPrefix(low, "fuzz_") || strings.HasSuffix(low, "_fuzz") ||
+				strings.HasSuffix(low, "_fuzzer") || strings.HasSuffix(low, "-fuzzer") {
 				return true
 			}
 		}
