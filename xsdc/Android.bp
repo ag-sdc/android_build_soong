@@ -1,0 +1,18 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+bootstrap_go_package {
+    name: "xsdc-soong-rules",
+    pkgPath: "android/soong/xsdc",
+    deps: [
+        "blueprint",
+        "soong",
+        "soong-android",
+        "soong-java",
+    ],
+    srcs: [
+        "xsdc.go",
+    ],
+    pluginFor: ["soong_build"],
+}

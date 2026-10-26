@@ -1,0 +1,67 @@
+// Copyright (C) 2018 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+bootstrap_go_package {
+    name: "aidl-soong-rules",
+    pkgPath: "android/soong/aidl",
+    deps: [
+        "blueprint",
+        "soong",
+        "soong-android",
+        "soong-aidl-library",
+        "soong-cc",
+        "soong-genrule",
+        "soong-phony",
+        "soong-java",
+        "soong-rust",
+    ],
+    srcs: [
+        "aidl_interface.go",
+        "properties.go",
+        "aidl_api.go",
+        "aidl_gen_rule.go",
+        "aidl_interface_backends.go",
+        "aidl_interface_defaults.go",
+        "aidl_interface_metadata_singleton.go",
+        "aidl_rust_source_provider.go",
+        "aidl_utils.go",
+    ],
+    pluginFor: ["soong_build"],
+}
+
+aidl_interfaces_metadata {
+    name: "aidl_metadata_json",
+    visibility: ["//visibility:public"],
+}
+
+cc_defaults {
+    name: "aidl-cpp-module-defaults",
+    target: {
+        darwin: {
+            enabled: false,
+        },
+    },
+}
+
+java_defaults {
+    name: "aidl-java-module-defaults",
+}
+
+rust_defaults {
+    name: "aidl-rust-module-defaults",
+}
