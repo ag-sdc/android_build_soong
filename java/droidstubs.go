@@ -1137,7 +1137,7 @@ func (d *Droidstubs) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 
 	// Add options for the other optional tasks: API-lint and check-released.
 	// We generate separate timestamp files for them.
-	doApiLint := BoolDefault(d.properties.Check_api.Api_lint.Enabled, false)
+	doApiLint := !ctx.Config().IsEnvTrue("WITHOUT_CHECK_API") && BoolDefault(d.properties.Check_api.Api_lint.Enabled, false)
 	doCheckReleased := apiCheckEnabled(ctx, d.properties.Check_api.Last_released, "last_released")
 
 	writeSdkValues := Bool(d.properties.Write_sdk_values)
