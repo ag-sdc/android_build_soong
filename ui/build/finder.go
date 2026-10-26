@@ -65,7 +65,7 @@ func NewSourceFinder(ctx Context, config Config) (f *finder.Finder) {
 		WorkingDirectory: dir,
 		RootDirs:         androidBpSearchDirs(config),
 		FollowSymlinks:   config.environ.IsEnvTrue("ALLOW_BP_UNDER_SYMLINKS"),
-		ExcludeDirs:      []string{".git", ".repo", "tests", "test", "testing", "javatests", "javatest", "robotests", "bivalenttest", "coretest", "services-test", "minimum-test", "unit_tests", "gtest", "cts", "vts", "vts-core", "testapps"},
+		ExcludeDirs:      []string{".git", ".repo"},
 		PruneFiles:       pruneFiles,
 		IncludeFiles: []string{
 			// Kati build definitions.
@@ -120,11 +120,11 @@ func findProductAndBoardConfigFiles(entries finder.DirEntries) (dirNames []strin
 
 func isTestPath(path string) bool {
 	cleanPath := filepath.Clean(path)
+	if strings.HasPrefix(cleanPath, "build/") || strings.HasPrefix(cleanPath, "tests_stubs/") {
+		return false
+	}
 	parts := strings.Split(cleanPath, string(filepath.Separator))
 	for i, part := range parts {
-		if part == "tests_stubs" {
-			continue
-		}
 		if i < len(parts)-1 {
 			low := strings.ToLower(part)
 			switch low {
