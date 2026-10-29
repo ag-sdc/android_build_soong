@@ -88,6 +88,9 @@ type AndroidAppImport struct {
 
 	provenanceMetaDataFile android.OutputPath
 
+	srcjar              android.Path
+	proguardOptionsFile android.Path
+
 	// Single aconfig "cache file" merged from this module and all dependencies.
 	mergedAconfigFiles map[string]android.Paths
 }
@@ -95,6 +98,9 @@ type AndroidAppImport struct {
 type AndroidAppImportProperties struct {
 	// A prebuilt apk to import
 	Apk *string `android:"path"`
+
+	// An optional prebuilt srcjar to export (for tags like .aapt.srcjar)
+	Srcjar *string `android:"path"`
 
 	// The name of a certificate in the default certificate directory or an android_app_certificate
 	// module name in the form ":module". Should be empty if presigned or default_dev_cert is set.
@@ -234,7 +240,7 @@ func (a *AndroidAppImport) DepsMutator(ctx android.BottomUpMutatorContext) {
 		}
 	}
 
-	a.usesLibrary.deps(ctx, true)
+	a.usesLibrary.deps(ctx, a.BaseModuleName() != "framework-res")
 }
 
 func (a *AndroidAppImport) uncompressEmbeddedJniLibs(
@@ -284,9 +290,13 @@ func (a *AndroidAppImport) BaseModuleName() string {
 }
 
 func (a *AndroidAppImport) generateAndroidBuildActions(ctx android.ModuleContext) {
-	if a.Name() == "prebuilt_framework-res" {
-		ctx.ModuleErrorf("prebuilt_framework-res found. This used to have special handling in soong, but was removed due to prebuilt_framework-res no longer existing. This check is to ensure it doesn't come back without readding the special handling.")
+	if a.properties.Srcjar != nil {
+		a.srcjar = android.PathForModuleSrc(ctx, *a.properties.Srcjar)
 	}
+
+	proguardFlags := android.PathForModuleOut(ctx, "aapt_proguard.flags")
+	android.WriteFileRule(ctx, proguardFlags, "# Prebuilt proguard flags\n")
+	a.proguardOptionsFile = proguardFlags
 
 	apexInfo, _ := android.ModuleProvider(ctx, android.ApexInfoProvider)
 	if !apexInfo.IsForPlatform() {
@@ -329,7 +339,10 @@ func (a *AndroidAppImport) generateAndroidBuildActions(ctx android.ModuleContext
 	var pathFragments []string
 	relInstallPath := String(a.properties.Relative_install_path)
 
-	if Bool(a.properties.Privileged) {
+	if a.BaseModuleName() == "framework-res" || a.BaseModuleName() == "org.lineageos.platform-res" {
+		pathFragments = []string{"framework"}
+		a.dexpreopter.disableDexpreopt()
+	} else if Bool(a.properties.Privileged) {
 		pathFragments = []string{"priv-app", relInstallPath, a.BaseModuleName()}
 	} else if ctx.InstallInTestcases() {
 		pathFragments = []string{relInstallPath, a.BaseModuleName(), ctx.DeviceConfig().DeviceArch()}
@@ -454,11 +467,46 @@ func (a *AndroidAppImport) OutputFile() android.Path {
 
 func (a *AndroidAppImport) OutputFiles(tag string) (android.Paths, error) {
 	switch tag {
-	case "":
+	case "", ".apk", ".export-package.apk":
 		return []android.Path{a.outputFile}, nil
+	case ".aapt.srcjar":
+		if a.srcjar != nil {
+			return []android.Path{a.srcjar}, nil
+		}
+		return nil, fmt.Errorf("module %q does not have a srcjar", a.BaseModuleName())
+	case ".aapt.proguardOptionsFile":
+		if a.proguardOptionsFile != nil {
+			return []android.Path{a.proguardOptionsFile}, nil
+		}
+		return nil, fmt.Errorf("module %q does not have proguard options file", a.BaseModuleName())
 	default:
 		return nil, fmt.Errorf("unsupported module reference tag %q", tag)
 	}
+}
+
+var _ AndroidLibraryDependency = (*AndroidAppImport)(nil)
+
+func (a *AndroidAppImport) ExportPackage() android.Path {
+	return a.outputFile
+}
+
+func (a *AndroidAppImport) ResourcesNodeDepSet() *android.DepSet[*resourcesNode] {
+	return nil
+}
+
+func (a *AndroidAppImport) RRODirsDepSet() *android.DepSet[rroDir] {
+	return nil
+}
+
+func (a *AndroidAppImport) ManifestsDepSet() *android.DepSet[android.Path] {
+	return nil
+}
+
+func (a *AndroidAppImport) SetRROEnforcedForDependent(enforce bool) {
+}
+
+func (a *AndroidAppImport) IsRROEnforced(ctx android.BaseModuleContext) bool {
+	return false
 }
 
 func (a *AndroidAppImport) JacocoReportClassesFile() android.Path {
